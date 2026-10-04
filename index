@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calculadora de cánones RenoBo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: ficha técnica de avalúo — barra de resumen fija; selector de tipología; pasos del procedimiento en orden; tablas de trabajo con scroll propio */
+:root{
+  --bg:#F4F5F1; --surface:#FFFFFF; --surface-2:#EEF0EA; --ink:#1C2430; --muted:#5E6873; --line:#D6DAD2;
+  --accent:#2E6A55; --accent-soft:#DCEBE4; --input:#FFF8E1; --input-line:#E2C766;
+  --ok:#2E7D4F; --ok-soft:#E1F1E7; --warn:#A86414; --warn-soft:#FBEBD3; --bad:#B23A32; --bad-soft:#F7DEDB;
+  --raw:#8A94A0; --homog:#2E6A55; --band:rgba(46,106,85,.14);
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#13181D; --surface:#1B2229; --surface-2:#222B33; --ink:#E6EAE6; --muted:#9AA5AE; --line:#33404A;
+  --accent:#6FC3A2; --accent-soft:#1F3A31; --input:#2C2A1E; --input-line:#7A6A2A;
+  --ok:#74C995; --ok-soft:#1D3527; --warn:#E3A55A; --warn-soft:#3A2D1B; --bad:#EE8A80; --bad-soft:#3D2220;
+  --raw:#7D8893; --homog:#6FC3A2; --band:rgba(111,195,162,.16); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#13181D; --surface:#1B2229; --surface-2:#222B33; --ink:#E6EAE6; --muted:#9AA5AE; --line:#33404A;
+  --accent:#6FC3A2; --accent-soft:#1F3A31; --input:#2C2A1E; --input-line:#7A6A2A;
+  --ok:#74C995; --ok-soft:#1D3527; --warn:#E3A55A; --warn-soft:#3A2D1B; --bad:#EE8A80; --bad-soft:#3D2220;
+  --raw:#7D8893; --homog:#6FC3A2; --band:rgba(111,195,162,.16); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px;padding-block:0 64px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:1.65rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.25rem;font-weight:700}
+h3{font-size:1rem;font-weight:600}
+p{margin:0}
+.mono,td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .small{font-size:.82rem}
+.eyebrow{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:600}
+header.top{padding-block:28px 10px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.tag{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-weight:600}
+.summary{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px}
+.summary .row{display:flex;flex-wrap:wrap;gap:10px 28px;align-items:center}
+.kpi{display:flex;flex-direction:column;min-width:0}
+.kpi .v{font-family:var(--f-mono);font-size:1.12rem;font-weight:500}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:.8rem;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.neutral{background:var(--surface-2);color:var(--muted)}
+nav.steps{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+nav.steps a{font-size:.8rem;color:var(--ink);text-decoration:none;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+nav.steps a:hover,nav.steps a:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+
+/* selector de tipología */
+.tipos{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:6px}
+.tipo{display:flex;flex-direction:column;gap:2px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);cursor:pointer;min-width:0}
+.tipo b{font-family:var(--f-display);font-size:.95rem;font-weight:600}
+.tipo span{font-size:.75rem;color:var(--muted)}
+.tipo[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.tipo[aria-pressed="true"] span{color:var(--accent)}
+
+section.step{margin-top:34px;scroll-margin-top:130px}
+.step-head{display:flex;gap:14px;align-items:baseline;margin-bottom:10px;flex-wrap:wrap}
+.step-head .idx{font-family:var(--f-mono);font-size:.85rem;color:var(--accent);font-weight:500}
+.lead{color:var(--muted);max-width:72ch;margin-bottom:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.grid{display:grid;gap:12px}
+.g4{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.cols{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);min-width:0}
+label.chk{display:flex;gap:8px;align-items:center;font-size:.86rem;color:var(--ink)}
+input,select,textarea{font:inherit;font-size:.9rem;color:var(--ink);background:var(--input);border:1px solid var(--input-line);border-radius:4px;padding:6px 8px;min-width:0;width:100%}
+textarea{font-family:var(--f-mono);font-size:.8rem;min-height:110px;resize:vertical}
+input[type=number]{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+input[type=checkbox]{width:auto;accent-color:var(--accent)}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;font-size:.85rem;cursor:pointer;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:6px 12px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:2px 6px}
+button:hover{border-color:var(--accent)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* correctores */
+.corr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.corr{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.corr .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.corr .fx{font-family:var(--f-mono);font-size:1.25rem;color:var(--accent)}
+.corr .rule{font-family:var(--f-mono);font-size:.74rem;color:var(--muted)}
+.corr .row2{display:flex;gap:10px;align-items:center}
+.corr .row2 input{width:90px}
+.lvl{white-space:nowrap;flex:none;font-size:.68rem;font-weight:700;letter-spacing:.06em;padding:1px 6px;border-radius:3px;background:var(--warn-soft);color:var(--warn)}
+.matrix td,.matrix th{text-align:center}
+.matrix td:first-child,.matrix th:first-child{text-align:left}
+.matrix tr.cur td{background:var(--accent-soft)}
+
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th{font-weight:600;text-align:left;color:var(--muted);font-size:.74rem;padding:8px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+td.n{text-align:right}
+tr:last-child td{border-bottom:none}
+tr.off td{color:var(--muted)}
+.tbl-inputs input,.tbl-inputs select{padding:3px 5px;font-size:.82rem}
+.tbl-inputs input[type=number]{width:92px}
+.tbl-inputs select{width:auto;min-width:92px}
+.tbl-inputs input.w-s{width:64px}
+.tbl-inputs input.w-id{width:58px;text-align:left;font-family:var(--f-mono)}
+.fac{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.fac.up{color:var(--ok);font-weight:500}.fac.dn{color:var(--bad);font-weight:500}.fac.one{color:var(--muted);opacity:.6}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.stats.s2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stats>div{background:var(--surface);padding:12px 14px;min-width:0}
+.stats .v{font-family:var(--f-mono);font-size:1.05rem;margin-top:2px}
+.big{font-family:var(--f-mono);font-size:1.7rem;font-weight:500;color:var(--accent)}
+.checks{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.formula{font-family:var(--f-mono);font-size:.82rem;background:var(--surface-2);border-radius:4px;padding:8px 10px;overflow-x:auto;white-space:nowrap}
+.chart-wrap{overflow-x:auto}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+svg .lbl{fill:var(--ink)}
+details.box{margin-top:12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:0 14px}
+details.box summary{cursor:pointer;font-weight:600;padding:10px 0}
+details.box[open]{padding-bottom:14px}
+pre.memo{font-family:var(--f-mono);font-size:.8rem;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px;white-space:pre-wrap;margin:0;max-height:440px;overflow:auto}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.78rem;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.note{font-size:.8rem;color:var(--muted);margin-top:10px;max-width:80ch}
+</style>
+</head>
+<body>
+
+
+<div class="summary">
+  <div class="wrap" style="padding-block:0">
+    <div class="row">
+      <div class="kpi"><span class="eyebrow">Tipología</span><span class="v" id="k-tipo" style="font-family:var(--f-display);font-weight:600">—</span></div>
+      <div class="kpi"><span class="eyebrow" id="k-base-l">Canon base</span><span class="v" id="k-base">—</span></div>
+      <div class="kpi"><span class="eyebrow">Canon a pactar</span><span class="v" id="k-nom">—</span></div>
+      <div class="kpi" id="k-n-box"><span class="eyebrow">Comparables usados</span><span class="v" id="k-n">—</span></div>
+      <span id="k-res" class="pill neutral">—</span>
+    </div>
+    <nav class="steps" aria-label="Pasos">
+      <a href="#tipologia">Tipología</a><a href="#activo">Activo</a><a href="#correctores">Correctores</a><a href="#comparables" class="comp-only">Comparables</a>
+      <a href="#homog" class="comp-only">Homogeneización</a><a href="#canon">Canon base</a><a href="#contrato">Contrato</a><a href="#actualizacion">Actualización</a><a href="#memoria">Memoria</a>
+    </nav>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Empresa de Renovación y Desarrollo Urbano de Bogotá · Herramienta de cálculo</p>
+      <h1>Calculadora de cánones de arrendamiento</h1>
+      <p class="muted small" style="margin-top:4px">Elija la tipología, describa el activo, ingrese sus comparables y obtenga el canon con la tabla de parámetros vigente.</p>
+    </div>
+    <div class="btns"><span class="tag">Parámetros ilustrativos · versión 2027-1</span><button type="button" id="btn-limpiar">Limpiar campos</button><button type="button" id="btn-ej-all">Cargar ejemplo</button><span class="small muted" id="limpiar-msg" role="status"></span></div>
+  </header>
+
+  <section class="step" id="tipologia" style="margin-top:10px">
+    <div class="step-head"><span class="idx">Paso 1</span><h2>Tipología del activo</h2></div>
+    <p class="lead">Cada tipología tiene su propio mercado, su propio método de cálculo y sus propios correctores.</p>
+    <div class="tipos" id="tipos" role="group" aria-label="Tipología"></div>
+  </section>
+
+  <section class="step" id="activo">
+    <div class="step-head"><span class="idx">Paso 2</span><h2>Ficha del activo</h2></div>
+    <p class="lead" id="activo-lead">Los atributos del activo son el punto de referencia: cada comparable se ajusta para parecerse a él.</p>
+    <div class="panel"><div class="grid g4" id="activo-form"></div></div>
+  </section>
+
+  <section class="step" id="correctores">
+    <div class="step-head"><span class="idx">Paso 3</span><h2>Correctores de la tipología</h2></div>
+    <p class="lead" id="corr-lead"></p>
+    <div class="corr-grid" id="corr-cards"></div>
+    <details class="box" id="matrix-box">
+      <summary>Comparar los correctores de todas las tipologías</summary>
+      <p class="note" style="margin:0 0 10px">Factor que se aplica a un comparable que <b>no</b> tiene el atributo cuando el activo sí lo tiene. “—” indica que el atributo no aplica a esa tipología.</p>
+      <div class="tbl-wrap"><table class="matrix" id="matrix"></table></div>
+    </details>
+  </section>
+
+  <section class="step comp-only" id="comparables">
+    <div class="step-head"><span class="idx">Paso 4</span><h2>Comparables</h2></div>
+    <p class="lead">Ingrese los comparables uno a uno o péguelos desde Excel. Un registro se usa si su uso es compatible, está dentro de la zona de influencia, tiene la antigüedad y el área admitidas, y no es atípico.</p>
+    <div class="btns" style="margin-bottom:10px">
+      <button type="button" class="primary" id="btn-add">Agregar comparable</button>
+      <button type="button" id="btn-paste-toggle" aria-expanded="false" aria-controls="paste-box">Pegar desde Excel</button>
+      <button type="button" id="btn-example">Cargar ejemplo</button>
+      <button type="button" id="btn-clear">Vaciar tabla</button>
+      <span class="small muted" id="data-status"></span>
+    </div>
+    <div class="panel" id="paste-box" hidden style="margin-bottom:12px">
+      <p class="small muted">Copie filas desde Excel con las columnas en este orden (Sí/No en las casillas). La fila de encabezados es opcional.</p>
+      <div class="formula" id="paste-cols" style="margin:8px 0"></div>
+      <textarea id="paste-area" aria-label="Filas pegadas desde Excel" placeholder="Pegue aquí las filas copiadas de Excel"></textarea>
+      <div class="btns" style="margin-top:8px"><button type="button" class="primary" id="btn-import">Importar filas</button><button type="button" id="btn-copy-head">Copiar encabezados</button><span class="small muted" id="paste-msg" role="status"></span></div>
+    </div>
+    <div id="aviso-activo" class="panel" hidden style="margin-bottom:10px;border-color:var(--warn);background:var(--warn-soft);color:var(--warn)"><b>Falta el área del activo.</b> Los comparables se seleccionan y homogeneizan frente al activo: complete su área y atributos en el <a href="#activo" style="color:inherit">paso 2</a>.</div>
+    <div class="tbl-wrap"><table class="tbl-inputs" id="t-comp"><thead></thead><tbody></tbody></table></div>
+    <p class="small muted" id="iqr-txt" style="margin-top:8px"></p>
+  </section>
+
+  <section class="step comp-only" id="homog">
+    <div class="step-head"><span class="idx">Paso 5</span><h2>Homogeneización</h2></div>
+    <p class="lead">Cada factor lleva el comparable a las condiciones del activo: mayor que 1 si el comparable es inferior en ese atributo, menor que 1 si es superior. Los factores se multiplican; se descarta el comparable que supera los límites de ajuste neto o bruto.</p>
+    <div class="tbl-wrap"><table id="t-hom"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="step" id="canon">
+    <div class="step-head"><span class="idx" id="canon-idx">Paso 6</span><h2 id="canon-h">Canon base</h2></div>
+    <p class="lead" id="canon-lead"></p>
+    <div id="canon-comp" class="cols">
+      <div class="panel">
+        <p class="eyebrow" id="c-base-l">Canon base mensual</p>
+        <p class="big" id="c-base">—</p>
+        <p class="small muted" id="c-ic">—</p>
+        <div class="checks" id="c-checks"></div>
+        <div class="stats s2" style="margin-top:14px">
+          <div><span class="eyebrow">Media por m²</span><div class="v" id="c-media">—</div></div>
+          <div><span class="eyebrow">Mediana por m²</span><div class="v" id="c-med">—</div></div>
+          <div><span class="eyebrow">Desv. estándar</span><div class="v" id="c-sd">—</div></div>
+          <div><span class="eyebrow">Coef. de variación</span><div class="v" id="c-cv">—</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Del valor observado al valor homogeneizado</h3>
+        <p class="small muted" style="margin-top:2px">Cada fila es un comparable elegible. La banda es el intervalo de confianza del 90 % de la media.</p>
+        <div class="chart-wrap"><svg id="chart" role="img" aria-label="Valor por m² de cada comparable antes y después de homogeneizar"></svg></div>
+        <div class="legend"><span><i style="background:var(--raw)"></i>Observado</span><span><i style="background:var(--homog)"></i>Homogeneizado</span><span><i style="background:var(--bad)"></i>Descartado por límites</span></div>
+      </div>
+    </div>
+    <div id="canon-cap" class="cols" hidden>
+      <div class="panel"><div class="grid g3">
+        <label class="f">Valor comercial del activo, según avalúo ($)<input id="cap-v" type="number" step="1000000"></label>
+        <label class="f">Tasa de rentabilidad mensual de la tipología (%)<input id="cap-r" type="number" step="0.05"></label>
+      </div>
+      <p class="formula" style="margin-top:12px">C_base = V × r</p>
+      <p class="note">La tasa es la mediana de la razón canon / valor de inmuebles similares, calibrada en el ejercicio anual. El valor no puede provenir de capitalizar rentas del mismo activo.</p></div>
+      <div class="panel"><p class="eyebrow">Canon base mensual</p><p class="big" id="cap-out">—</p><p class="small muted" id="cap-txt"></p></div>
+    </div>
+    <div id="canon-rep" class="cols" hidden>
+      <div class="panel"><div class="grid g3">
+        <label class="f">Valor de reposición, VR ($)<input id="rep-vr" type="number" step="100000"></label>
+        <label class="f">Valor residual (% de VR)<input id="rep-s" type="number" step="5"></label>
+        <label class="f">Vida útil (años)<input id="rep-n" type="number" step="1"></label>
+        <label class="f">Edad actual (años)<input id="rep-edad" type="number" step="1"></label>
+        <label class="f">Costo de oportunidad anual, i (%)<input id="rep-i" type="number" step="0.5"></label>
+        <label class="f">Mantenimiento anual (% de VR)<input id="rep-m" type="number" step="0.5"></label>
+      </div>
+      <p class="formula" style="margin-top:12px">C_mes = [VR·(1 − s)/n + i·VD + m·VR] / 12</p></div>
+      <div class="panel"><p class="eyebrow">Canon base mensual</p><p class="big" id="rep-out">—</p><div class="stats" style="margin-top:12px">
+        <div><span class="eyebrow">Depreciación anual</span><div class="v" id="rep-dep">—</div></div>
+        <div><span class="eyebrow">Valor depreciado, VD</span><div class="v" id="rep-vd">—</div></div>
+        <div><span class="eyebrow">Costo de capital anual</span><div class="v" id="rep-cap">—</div></div>
+        <div><span class="eyebrow">Mantenimiento anual</span><div class="v" id="rep-man">—</div></div></div></div>
+    </div>
+  </section>
+
+  <section class="step" id="contrato">
+    <div class="step-head"><span class="idx" id="contrato-idx">Paso 7</span><h2>Contrato: renta efectiva y descuentos</h2></div>
+    <div id="contrato-mes">
+      <p class="lead">Si el contrato tiene meses de gracia, aportes de RenoBo o costos de transacción, el canon nominal sube para que RenoBo reciba, en valor presente, lo mismo que cobrando el canon base todos los meses.</p>
+      <div class="cols">
+        <div class="panel">
+          <div class="grid g3">
+            <label class="f">Plazo (meses)<input id="r-plazo" type="number" min="1" step="1"></label>
+            <label class="f">Meses de gracia<input id="r-gracia" type="number" min="0" step="1"></label>
+            <label class="f">Tasa de oportunidad mensual (%)<input id="r-k" type="number" step="0.1"></label>
+            <label class="f">Aporte de RenoBo ($)<input id="r-aporte" type="number" step="100000"></label>
+            <label class="f">Costos de transacción (n.º de cánones)<input id="r-ncom" type="number" step="0.5"></label>
+          </div>
+          <p class="formula" style="margin-top:14px">C_nom = (C_base · a(T) + aporte + costos) / (a(T) − a(g)),  a(n) = (1 − (1+k)^−n) / k</p>
+          <div class="checks" id="r-warn"></div>
+        </div>
+        <div class="panel">
+          <p class="eyebrow">Canon nominal de mercado (redondeado a miles)</p>
+          <p class="big" id="r-nom" style="font-size:1.35rem">—</p>
+          <p class="small muted" id="r-exact">—</p>
+          <h3 style="margin-top:16px">Descuento de política (Módulo 5)</h3>
+          <div style="margin-top:8px" class="grid g3">
+            <label class="f">Causal<select id="d-causal"><option>Sin descuento</option><option>Activación comercial</option><option>Uso social o comunitario</option><option>Protección de moradores</option><option>Ocupación transitoria</option></select></label>
+            <label class="f">Descuento sobre el canon nominal (%)<input id="d-pct" type="number" min="0" max="100" step="1"></label>
+            <label class="f">Canon negociado (opcional, $/mes)<input id="d-pactado" type="number" step="10000"></label>
+          </div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+            <p class="eyebrow">Canon a pactar</p>
+            <p class="big" id="d-final">—</p>
+            <p class="small muted" id="d-li">—</p>
+            <div class="checks" id="d-res"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="contrato-dia" hidden>
+      <p class="lead">Los espacios temporales se cobran por día. El valor del contrato es la tarifa diaria por el número de días de uso.</p>
+      <div class="cols"><div class="panel"><label class="f">Días de uso previstos<input id="t-dias" type="number" min="1" step="1"></label></div>
+      <div class="panel"><p class="eyebrow">Valor del contrato</p><p class="big" id="t-total">—</p><p class="small muted" id="t-txt"></p></div></div>
+    </div>
+  </section>
+
+  <section class="step" id="actualizacion">
+    <div class="step-head"><span class="idx" id="act-idx">Paso 8</span><h2>Actualización anual</h2></div>
+    <p class="lead" id="act-lead"></p>
+    <div class="panel"><div class="grid g4">
+      <label class="f">Peso del IPC, w (%)<input id="u-w" type="number" step="5"></label>
+      <label class="f">Puntos adicionales, p (%)<input id="u-p" type="number" step="0.5"></label>
+      <label class="f">Tope del reajuste (%)<input id="u-tope" type="number" step="1"></label>
+    </div></div>
+    <div class="tbl-wrap" style="margin-top:12px"><table class="tbl-inputs" id="t-act"><thead><tr><th>Año</th><th>IPC año anterior (%)</th><th>Variación del mercado (%)</th><th>Índice combinado</th><th>Reajuste aplicado</th><th>Canon</th><th>Nota</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="step" id="memoria">
+    <div class="step-head"><span class="idx" id="mem-idx">Paso 9</span><h2>Memoria de cálculo</h2></div>
+    <p class="lead">Descargue la memoria en PDF para el expediente técnico: incluye la identificación del activo, el resultado, los comparables, la homogeneización, los correctores aplicados, el contrato, la actualización y los espacios de firma.</p>
+    <pre class="memo" id="memo"></pre>
+    <div class="btns" style="margin-top:10px"><button type="button" class="primary" id="btn-pdf">Descargar memoria en PDF</button><button type="button" id="btn-copy">Copiar resumen</button><span class="small muted" id="copy-msg" role="status"></span></div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt$=v=>isFinite(v)?"$"+Math.round(v).toLocaleString("es-CO"):"—";
+const fmtN=(v,d=3)=>isFinite(v)?v.toLocaleString("es-CO",{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const fmtP=(v,d=1)=>isFinite(v)?(v*100).toLocaleString("es-CO",{minimumFractionDigits:d,maximumFractionDigits:d})+" %":"—";
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const LN=Math.log;
+
+/* ===== Tabla de parámetros por tipología (ILUSTRATIVA, nivel C) ===== */
+const UPZ=[["UPZ_01",0],["UPZ_02",-0.12],["UPZ_03",0.18],["UPZ_04",-0.25]];
+const TIPOS={
+  calle:{nombre:"Local a nivel de calle",desc:"Comparación de mercado",metodo:"comp",unidad:"mes",neg:0.95,g:0.06,barea:-0.15,zonaL:"UPZ",zonas:UPZ,iva:true,tasa:0.0065,
+    attrs:[{k:"esq",l:"Esquina",b:0.08,d:"Local con frente sobre dos vías"},{k:"via",l:"Vía principal",b:0.12,d:"Frente sobre vía arterial o eje comercial"},{k:"est",l:"Buen estado",b:0.05,d:"Acabados, redes y fachada en buen estado"},{k:"p2",l:"Segundo piso o superior",b:LN(0.88),d:"Sin acceso directo desde la calle"}]},
+  cc:{nombre:"Local en centro comercial",desc:"Comparación de mercado",metodo:"comp",unidad:"mes",neg:0.96,g:0.04,barea:-0.20,zonaL:"Centro comercial",zonas:[["CC_A",0.25],["CC_B",0],["CC_C",-0.20]],iva:true,tasa:0.006,
+    attrs:[{k:"pas",l:"Pasillo principal o junto a ancla",b:0.15,d:"Mayor flujo de visitantes"},{k:"plaz",l:"Frente a plazoleta de comidas",b:0.06,d:"Visibilidad desde zona de permanencia"},{k:"p2",l:"Nivel superior al de acceso",b:LN(0.82),d:"Piso distinto al de la entrada principal"},{k:"est",l:"Buen estado",b:0.04,d:"Local entregado con acabados"}]},
+  ofi:{nombre:"Oficina",desc:"Comparación de mercado",metodo:"comp",unidad:"mes",neg:0.93,g:0.05,barea:-0.08,zonaL:"UPZ",zonas:UPZ,iva:true,tasa:0.006,
+    attrs:[{k:"claseA",l:"Edificio clase A",b:0.18,d:"Especificaciones y servicios de primer nivel"},{k:"parq",l:"Parqueadero asignado",b:0.07,d:"Al menos un cupo por cada 50 m²"},{k:"alto",l:"Piso 6 o superior",b:0.04,d:"Vista y menor ruido"},{k:"est",l:"Buen estado",b:0.05,d:"Lista para ocupar"}]},
+  bod:{nombre:"Bodega",desc:"Comparación de mercado",metodo:"comp",unidad:"mes",neg:0.94,g:0.07,barea:-0.10,zonaL:"UPZ",zonas:UPZ,iva:true,tasa:0.0065,
+    attrs:[{k:"alt",l:"Altura libre de 8 m o más",b:0.10,d:"Permite estanterías altas"},{k:"tracto",l:"Acceso para tractomula",b:0.08,d:"Vía y patio de maniobras aptos"},{k:"muelle",l:"Muelle de carga",b:0.05,d:"Plataforma a nivel de camión"},{k:"est",l:"Buen estado",b:0.05,d:"Cubierta y pisos sin daños"}]},
+  viv:{nombre:"Vivienda",desc:"Comparación de mercado · Ley 820",metodo:"comp",unidad:"mes",neg:0.97,g:0.05,barea:-0.20,zonaL:"UPZ",zonas:UPZ,iva:false,tasa:0.0045,ley820:true,
+    attrs:[{k:"parq",l:"Parqueadero",b:0.06,d:"Cupo de parqueo incluido"},{k:"asc",l:"Ascensor",b:0.04,d:"Edificio con ascensor"},{k:"ext",l:"Vista exterior",b:0.03,d:"Ventanas hacia la calle"},{k:"est",l:"Buen estado",b:0.05,d:"Lista para habitar"}]},
+  temp:{nombre:"Espacio comercial temporal",desc:"Tarifa por día",metodo:"comp",unidad:"día",neg:0.97,g:0.05,barea:-0.10,zonaL:"UPZ",zonas:UPZ,iva:true,tasa:0,
+    attrs:[{k:"alta",l:"Temporada alta",b:0.15,d:"Diciembre, mitad de año o eventos"},{k:"serv",l:"Servicios incluidos",b:0.08,d:"Energía, aseo y vigilancia"},{k:"flujo",l:"Alto flujo peatonal",b:0.12,d:"Plaza, estación o eje peatonal"}]},
+  lote:{nombre:"Lote o predio",desc:"Capitalización inversa",metodo:"cap",unidad:"mes",tasa:0.0035,attrs:[]},
+  mob:{nombre:"Mobiliario auxiliar",desc:"Costo de reposición",metodo:"rep",unidad:"mes",attrs:[]}
+};
+const REGLAS={radio:500,meses:12,amin:0.5,amax:1.5,ric:1.5,lneto:0.25,lbruto:0.40,nmin:5,cvmax:0.075,iva:0.19};
+
+/* ===== Ejemplos por tipología (ILUSTRATIVOS) ===== */
+const R=(id,tipo,uso,zona,dist,meses,area,canon,iva,admin,at)=>({id,tipo,uso,zona,dist,meses,area,canon,iva,admin,at});
+const EJ={
+  calle:{activo:{area:60,zona:"UPZ_01",at:{esq:true,via:true,est:true,p2:false}},comps:[
+    R("L1","Oferta",true,"UPZ_01",150,2,55,6380000,false,0,{esq:true,via:true,est:true,p2:false}),
+    R("L2","Oferta",true,"UPZ_01",300,4,70,7000000,false,0,{esq:false,via:true,est:true,p2:false}),
+    R("L3","Cierre",true,"UPZ_01",220,3,62,6800000,false,0,{esq:true,via:true,est:false,p2:false}),
+    R("L4","Oferta",true,"UPZ_01",410,1,58,5220000,false,0,{esq:true,via:false,est:true,p2:false}),
+    R("L5","Cierre",true,"UPZ_01",350,5,65,6175000,false,0,{esq:false,via:true,est:true,p2:false}),
+    R("L6","Oferta",true,"UPZ_01",180,2,50,7021000,true,0,{esq:true,via:true,est:true,p2:false}),
+    R("L8","Oferta",true,"UPZ_02",900,2,62,6500000,false,0,{esq:true,via:true,est:true,p2:false}),
+    R("L9","Oferta",true,"UPZ_01",200,15,58,5800000,false,0,{esq:true,via:true,est:true,p2:false}),
+    R("L10","Oferta",true,"UPZ_01",320,2,140,11000000,false,0,{esq:true,via:true,est:true,p2:false}),
+    R("L11","Oferta",false,"UPZ_01",260,1,55,6000000,false,0,{esq:false,via:true,est:true,p2:false}),
+    R("L12","Oferta",true,"UPZ_01",120,2,52,9100000,false,0,{esq:true,via:true,est:true,p2:false}),
+    R("L14","Oferta",true,"UPZ_01",470,9,80,7600000,false,0,{esq:false,via:false,est:false,p2:false})]},
+  cc:{activo:{area:40,zona:"CC_B",at:{pas:true,plaz:false,p2:false,est:true}},comps:[
+    R("C1","Oferta",true,"CC_B",0,3,38,7300000,false,0,{pas:true,plaz:false,p2:false,est:true}),
+    R("C2","Cierre",true,"CC_B",0,6,45,7650000,false,0,{pas:false,plaz:false,p2:false,est:true}),
+    R("C3","Oferta",true,"CC_B",0,2,35,7000000,false,0,{pas:true,plaz:true,p2:false,est:true}),
+    R("C4","Oferta",true,"CC_B",0,1,42,6800000,false,0,{pas:true,plaz:false,p2:true,est:true}),
+    R("C5","Cierre",true,"CC_B",0,4,40,6900000,false,0,{pas:false,plaz:false,p2:false,est:false}),
+    R("C6","Oferta",true,"CC_A",300,2,40,9500000,false,0,{pas:true,plaz:false,p2:false,est:true})]},
+  ofi:{activo:{area:120,zona:"UPZ_01",at:{claseA:false,parq:true,alto:true,est:true}},comps:[
+    R("O1","Oferta",true,"UPZ_01",250,2,110,7900000,false,0,{claseA:false,parq:true,alto:true,est:true}),
+    R("O2","Cierre",true,"UPZ_01",380,5,140,8800000,false,0,{claseA:false,parq:true,alto:false,est:true}),
+    R("O3","Oferta",true,"UPZ_01",150,1,95,8200000,false,0,{claseA:true,parq:true,alto:true,est:true}),
+    R("O4","Oferta",true,"UPZ_01",420,3,130,8100000,false,0,{claseA:false,parq:false,alto:true,est:true}),
+    R("O5","Cierre",true,"UPZ_01",300,7,120,7700000,false,0,{claseA:false,parq:true,alto:true,est:false}),
+    R("O6","Oferta",true,"UPZ_01",200,2,100,7400000,false,0,{claseA:false,parq:true,alto:true,est:true})]},
+  bod:{activo:{area:800,zona:"UPZ_04",at:{alt:true,tracto:true,muelle:false,est:true}},comps:[
+    R("B1","Oferta",true,"UPZ_04",400,3,750,22500000,false,0,{alt:true,tracto:true,muelle:false,est:true}),
+    R("B2","Cierre",true,"UPZ_04",350,6,900,24300000,false,0,{alt:false,tracto:true,muelle:false,est:true}),
+    R("B3","Oferta",true,"UPZ_04",480,2,820,26200000,false,0,{alt:true,tracto:true,muelle:true,est:true}),
+    R("B4","Oferta",true,"UPZ_04",220,1,700,19600000,false,0,{alt:true,tracto:false,muelle:false,est:true}),
+    R("B5","Cierre",true,"UPZ_04",300,4,860,24100000,false,0,{alt:true,tracto:true,muelle:false,est:false})]},
+  viv:{activo:{area:70,zona:"UPZ_01",at:{parq:true,asc:true,ext:true,est:true}},comps:[
+    R("V1","Oferta",true,"UPZ_01",200,2,65,2600000,false,0,{parq:true,asc:true,ext:true,est:true}),
+    R("V2","Oferta",true,"UPZ_01",310,3,72,2550000,false,0,{parq:false,asc:true,ext:true,est:true}),
+    R("V3","Cierre",true,"UPZ_01",150,5,80,2900000,false,0,{parq:true,asc:true,ext:false,est:true}),
+    R("V4","Oferta",true,"UPZ_01",420,1,68,2500000,false,0,{parq:true,asc:false,ext:true,est:true}),
+    R("V5","Cierre",true,"UPZ_01",260,6,75,2700000,false,0,{parq:true,asc:true,ext:true,est:false}),
+    R("V6","Oferta",true,"UPZ_01",380,2,62,2450000,false,0,{parq:true,asc:true,ext:true,est:true})]},
+  temp:{activo:{area:20,zona:"UPZ_01",at:{alta:false,serv:true,flujo:true}},comps:[
+    R("T1","Cierre",true,"UPZ_01",100,2,18,380000,false,0,{alta:false,serv:true,flujo:true}),
+    R("T2","Oferta",true,"UPZ_01",250,1,25,520000,false,0,{alta:true,serv:true,flujo:true}),
+    R("T3","Cierre",true,"UPZ_01",300,4,20,360000,false,0,{alta:false,serv:false,flujo:true}),
+    R("T4","Oferta",true,"UPZ_01",180,3,22,400000,false,0,{alta:false,serv:true,flujo:false}),
+    R("T5","Cierre",true,"UPZ_01",220,6,20,420000,false,0,{alta:false,serv:true,flujo:true})]},
+  lote:{activo:{area:1500,zona:"UPZ_03",at:{}},cap:{v:3200000000,r:0.0035}},
+  mob:{activo:{area:1,zona:"",at:{}},rep:{vr:45000000,s:0.10,n:8,edad:2,i:0.12,m:0.03}}
+};
+const clone=o=>JSON.parse(JSON.stringify(o));
+function nuevoEstado(k){const e=clone(EJ[k]);const T=TIPOS[k];
+  return {codigo:"ACT-"+k.toUpperCase()+"-01",activo:e.activo,comps:e.comps||[],cap:e.cap||{v:0,r:T.tasa||0.004},rep:e.rep||{vr:0,s:0.1,n:8,edad:0,i:0.12,m:0.03},
+    contrato:{plazo:k==="viv"?12:60,gracia:k==="calle"?2:0,k:0.01,aporte:k==="calle"?5000000:0,ncom:1,pactado:null,dias:30},
+    act:{w:k==="viv"?1:0.6,p:k==="viv"?0:0.01,tope:k==="viv"?0.052:0.15,ipc:[null,0.052,0.045,0.040,0.035],mkt:[null,0.072,0.060,0.050,0.045]},origen:"ejemplo"}}
+function estadoBlanco(k){const T=TIPOS[k],e=nuevoEstado(k),at={};T.attrs.forEach(a=>at[a.k]=false);
+  e.codigo="";e.activo={area:null,zona:T.zonas?T.zonas[0][0]:"",at};e.comps=[];e.origen="usuario";
+  e.cap={v:null,r:T.tasa||null};e.rep={vr:null,s:null,n:null,edad:null,i:null,m:null};
+  e.contrato={plazo:null,gracia:null,k:e.contrato.k,aporte:null,ncom:null,pactado:null,dias:null};return e}
+const ST={}; let K="calle";
+function S(){return ST[K]||(ST[K]=estadoBlanco(K))}
+
+/* ===== estadística ===== */
+function quartile(a0,q){const a=[...a0].sort((x,y)=>x-y),p=(a.length-1)*q,l=Math.floor(p),h=Math.ceil(p);return a[l]+(a[h]-a[l])*(p-l)}
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+function sd(a){const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1))}
+function lgamma(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(const ci of c)s+=ci/++y;return -t+Math.log(2.5066282746310005*s/x)}
+function betacf(a,b,x){let qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;if(Math.abs(d)<1e-30)d=1e-30;d=1/d;let h=d;for(let m=1;m<=200;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<1e-30)d=1e-30;c=1+aa/c;if(Math.abs(c)<1e-30)c=1e-30;d=1/d;h*=d*c;aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<1e-30)d=1e-30;c=1+aa/c;if(Math.abs(c)<1e-30)c=1e-30;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<3e-12)break}return h}
+function ibeta(a,b,x){if(x<=0)return 0;if(x>=1)return 1;const bt=Math.exp(lgamma(a+b)-lgamma(a)-lgamma(b)+a*Math.log(x)+b*Math.log(1-x));return x<(a+1)/(a+b+2)?bt*betacf(a,b,x)/a:1-bt*betacf(b,a,1-x)/b}
+function tcdf(t,df){const p=0.5*ibeta(df/2,0.5,df/(df+t*t));return t>0?1-p:p}
+function tinv(p,df){let lo=0,hi=100;for(let i=0;i<120;i++){const m=(lo+hi)/2;if(tcdf(m,df)<p)lo=m;else hi=m}return (lo+hi)/2}
+
+/* ===== cálculo ===== */
+function calc(){
+  const T=TIPOS[K],s=S(),A=s.activo,P=REGLAS,O={T};
+  if(T.metodo==="comp"){
+    const g=z=>{const r=T.zonas.find(u=>u[0]===z);return r?r[1]:NaN},g0=g(A.zona);
+    const rows=s.comps.map(c=>{
+      const neto=c.canon/(c.iva?1+P.iva:1)-(c.admin||0),m2=neto/c.area;
+      const cr={uso:!!c.uso,dist:c.dist<=P.radio,fecha:c.meses>=0&&c.meses<=P.meses,area:c.area/A.area>=P.amin&&c.area/A.area<=P.amax,dato:isFinite(m2)&&m2>0&&isFinite(g(c.zona))};
+      const sel=Object.values(cr).every(Boolean);
+      const motivo=!(A.area>0)?"Falta el área del activo":!cr.dato?"Dato incompleto":!cr.uso?"Uso no compatible":!cr.dist?"Fuera de la zona":!cr.fecha?"Información antigua":!cr.area?"Área fuera del rango":"";
+      return {c,m2,sel,motivo};
+    });
+    const sv=rows.filter(r=>r.sel).map(r=>r.m2);let lo=-Infinity,hi=Infinity,q1,q3;
+    if(sv.length>=4){q1=quartile(sv,.25);q3=quartile(sv,.75);lo=q1-P.ric*(q3-q1);hi=q3+P.ric*(q3-q1)}
+    O.iqr={n:sv.length,q1,q3,lo,hi};
+    rows.forEach(r=>{
+      r.atip=r.sel&&(r.m2<lo||r.m2>hi);r.eleg=r.sel&&!r.atip;if(r.atip)r.motivo="Valor atípico";
+      if(!r.eleg)return;const c=r.c;
+      const f={neg:c.tipo==="Oferta"?T.neg:1,fecha:Math.pow(1+T.g,c.meses/12),ubic:Math.exp(g0-g(c.zona)),area:Math.pow(c.area/A.area,-T.barea)};
+      T.attrs.forEach(a=>{f[a.k]=Math.exp(a.b*((A.at[a.k]?1:0)-(c.at[a.k]?1:0)))});
+      r.f=f;r.tot=Object.values(f).reduce((x,y)=>x*y,1);r.neto=r.tot-1;r.bruto=Object.values(f).reduce((x,y)=>x+Math.abs(y-1),0);
+      r.okLim=Math.abs(r.neto)<=P.lneto&&r.bruto<=P.lbruto;r.h=r.m2*r.tot;r.usado=r.okLim;if(!r.okLim)r.motivo="Excede límites de ajuste";
+    });
+    O.rows=rows;const H=rows.filter(r=>r.usado).map(r=>r.h);O.n=H.length;
+    if(O.n>0){O.media=mean(H);O.med=quartile(H,.5);O.base=O.media*A.area}
+    if(O.n>1){O.sd=sd(H);O.cv=O.sd/O.media;const e=tinv(0.95,O.n-1)*O.sd/Math.sqrt(O.n);O.li=(O.media-e)*A.area;O.ls=(O.media+e)*A.area}
+    O.okN=O.n>=P.nmin;O.okCV=O.n>1&&O.cv<=P.cvmax;O.ok=O.okN&&O.okCV;
+  }else if(T.metodo==="cap"){O.ok=s.cap.v>0&&s.cap.r>0;O.base=O.ok?s.cap.v*s.cap.r:NaN}
+  else{const p=s.rep;O.dep=p.vr*(1-p.s)/p.n;O.vd=Math.max(p.vr*p.s,p.vr-O.dep*p.edad);O.capc=p.i*O.vd;O.man=p.m*p.vr;O.ok=p.vr>0&&p.n>0;O.base=O.ok?(O.dep+O.capc+O.man)/12:NaN}
+  // contrato
+  const C=s.contrato;
+  if(T.unidad==="mes"&&isFinite(O.base)&&C.plazo>0&&(C.gracia||0)<C.plazo){
+    const k=C.k||0,an=n=>n<=0?0:(k===0?n:(1-Math.pow(1+k,-n))/k);O.aT=an(C.plazo);O.ag=an(C.gracia);
+    O.nomEx=(O.base*O.aT+C.aporte+C.ncom*O.base)/(O.aT-O.ag);O.nom=Math.round(O.nomEx/1000)*1000;
+    O.liAdj=isFinite(O.li)?Math.round(O.li*O.nomEx/O.base/1000)*1000:O.nom;
+    O.dpol=C.causal&&C.causal!=="Sin descuento"?(C.dpct||0)/100:0;O.causal=O.dpol>0?C.causal:"";
+    O.pactado=C.pactado!=null?C.pactado:Math.round(O.nom*(1-O.dpol)/1000)*1000;
+    const dif=O.nom-O.pactado;O.subs=dif>0&&(O.dpol>0||O.pactado<O.liAdj);O.sinCausal=O.subs&&O.dpol===0;
+    O.subsMes=O.subs?dif:0;O.mesesPago=Math.max(0,(C.plazo||0)-(C.gracia||0));O.subsTot=O.subsMes*O.mesesPago;O.dReal=O.nom>0?dif/O.nom:0;
+  }else if(T.unidad!=="mes"&&isFinite(O.base)){O.nom=Math.round(O.base/100)*100;O.pactado=O.nom;O.total=O.nom*C.dias}
+  O.warn=[];
+  if(T.unidad==="mes"&&isFinite(O.base)){
+    if(!(C.plazo>0))O.warn.push(["bad","Ingrese el plazo del contrato."]);
+    else if((C.gracia||0)>=C.plazo)O.warn.push(["bad","Los meses de gracia deben ser menores que el plazo."]);
+    else if(isFinite(O.nomEx)&&O.nomEx/O.base>1.25)O.warn.push(["warn",`El canon nominal supera en ${fmtP(O.nomEx/O.base-1,0)} al canon base: la gracia, el aporte y los costos se recuperan en solo ${C.plazo-(C.gracia||0)} meses de pago. Considere un plazo mayor, menos gracia o pactar el aporte por separado.`]);
+    if(C.k>0.03)O.warn.push(["warn",`Revise la tasa de oportunidad: ${fmtP(C.k)} mensual equivale a ${fmtP(Math.pow(1+C.k,12)-1,0)} anual.`]);
+  }
+  // actualización
+  const U=s.act;O.years=[];let v=O.pactado;
+  for(let y=1;y<=5;y++){if(y===1){O.years.push({y,v});continue}
+    const comb=U.w*U.ipc[y-1]+(1-U.w)*U.mkt[y-1];const tope=T.ley820?U.ipc[y-1]:U.tope;const aj=Math.min(comb+U.p,tope);
+    v=Math.round(v*(1+aj));O.years.push({y,comb,aj,v})}
+  return O;
+}
+
+/* ===== interfaz ===== */
+function pill(c,t){return `<span class="pill ${c}">${esc(t)}</span>`}
+function facCell(v){if(!isFinite(v))return "<td></td>";const c=Math.abs(v-1)<5e-4?"one":v>1?"up":"dn";return `<td class="n"><span class="fac ${c}">${fmtN(v,3)}</span></td>`}
+const UL=()=>TIPOS[K].unidad==="día"?"/día":"/mes";
+
+function drawTipos(){
+  $("tipos").innerHTML=Object.entries(TIPOS).map(([k,t])=>`<button type="button" class="tipo" data-k="${k}" aria-pressed="${k===K}"><b>${esc(t.nombre)}</b><span>${esc(t.desc)}</span></button>`).join("");
+  $("tipos").querySelectorAll(".tipo").forEach(b=>b.onclick=()=>{K=b.dataset.k;drawAll()});
+}
+function drawActivo(){
+  const T=TIPOS[K],s=S(),A=s.activo,f=$("activo-form");
+  let h=`<label class="f">Código del activo<input id="a-cod" type="text" value="${esc(s.codigo)}"></label>`;
+  if(T.metodo!=="rep")h+=`<label class="f">Área privada (m²) · obligatoria<input id="a-area" type="number" min="1" step="1" required value="${A.area??""}"></label>`;
+  if(T.metodo==="comp")h+=`<label class="f">${esc(T.zonaL)}<select id="a-zona">${T.zonas.map(z=>`<option${z[0]===A.zona?" selected":""}>${esc(z[0])}</option>`).join("")}</select></label>`;
+  h+=T.attrs.map(a=>`<label class="chk"><input type="checkbox" data-at="${a.k}"${A.at[a.k]?" checked":""}> ${esc(a.l)}</label>`).join("");
+  f.innerHTML=h;
+  $("activo-lead").textContent=T.metodo==="comp"?"Los atributos del activo son el punto de referencia: cada comparable se ajusta para parecerse a él.":T.metodo==="cap"?"Para lotes y predios el canon se obtiene del valor comercial del activo y de la tasa de rentabilidad de la tipología.":"Para el mobiliario el canon recupera la inversión, su costo de oportunidad y su mantenimiento.";
+  $("a-cod").oninput=e=>{s.codigo=e.target.value;update()};
+  if($("a-area"))$("a-area").oninput=e=>{A.area=e.target.value===""?null:Number(e.target.value);update()};
+  if($("a-zona"))$("a-zona").onchange=e=>{A.zona=e.target.value;update()};
+  f.querySelectorAll("[data-at]").forEach(el=>el.onchange=()=>{A.at[el.dataset.at]=el.checked;update()});
+}
+function drawCorr(){
+  const T=TIPOS[K],box=$("corr-cards");
+  if(T.metodo!=="comp"){
+    $("corr-lead").textContent=T.metodo==="cap"?"Esta tipología no usa comparables homogeneizados: su parámetro es la tasa de rentabilidad mensual.":"Esta tipología no usa comparables: sus parámetros son la vida útil, el valor residual, el costo de oportunidad y el mantenimiento.";
+    box.innerHTML=T.metodo==="cap"?`<div class="corr"><div class="top"><b>Tasa de rentabilidad mensual</b><span class="lvl">NIVEL C</span></div><div class="fx">${fmtP(T.tasa,2)}</div><div class="rule">C_base = V × r</div><p class="small muted">Mediana de la razón canon / valor de inmuebles similares.</p></div>`:
+      `<div class="corr"><div class="top"><b>Costo de reposición</b><span class="lvl">NIVEL C</span></div><div class="rule">[VR(1−s)/n + i·VD + m·VR] / 12</div><p class="small muted">Parámetros definidos por el área financiera.</p></div>`;
+  }else{
+    $("corr-lead").textContent=`Factores que se aplican a cada comparable de ${T.nombre.toLowerCase()} según sus diferencias con el activo. Puede modificar los coeficientes para explorar su efecto; en la aplicación real se usan los aprobados.`;
+    const fixed=[{k:"_neg",l:"Negociación",fx:T.neg,rule:"× "+fmtN(T.neg,3)+" si es oferta",d:"Diferencia entre canon ofertado y pactado",edit:"neg"},
+      {k:"_g",l:"Fecha",fx:1+T.g,rule:"(1 + "+fmtP(T.g)+")^(meses/12)",d:"Lleva el dato a la fecha de cálculo",edit:"g"},
+      {k:"_area",l:"Área",fx:Math.pow(2,-T.barea),rule:"(A_comp / A_activo)^"+fmtN(-T.barea,2),d:"Factor mostrado: comparable con el doble de área",edit:"barea"},
+      {k:"_ubic",l:"Ubicación ("+T.zonaL+")",fx:NaN,rule:"exp(γ_activo − γ_comp)",d:"Un efecto por "+T.zonaL.toLowerCase()+": "+T.zonas.map(z=>z[0]+" "+fmtN(z[1],2)).join(" · ")}];
+    const cards=fixed.map(c=>`<div class="corr"><div class="top"><b>${esc(c.l)}</b><span class="lvl">NIVEL C</span></div>${isFinite(c.fx)?`<div class="fx">${fmtN(c.fx,3)}</div>`:""}<div class="rule">${esc(c.rule)}</div><p class="small muted">${esc(c.d)}</p>${c.edit?`<div class="row2"><span class="small muted">${c.edit==="neg"?"Factor":c.edit==="g"?"g anual":"β₁"}</span><input type="number" step="0.01" data-fix="${c.edit}" value="${T[c.edit]}" aria-label="${esc(c.l)}"></div>`:""}</div>`)
+      .concat(T.attrs.map(a=>`<div class="corr"><div class="top"><b>${esc(a.l)}</b><span class="lvl">NIVEL C</span></div><div class="fx">${fmtN(Math.exp(a.b),3)}</div><div class="rule">exp(β · (X_activo − X_comp))</div><p class="small muted">${esc(a.d)}. Factor mostrado: comparable sin el atributo, activo con él.</p><div class="row2"><span class="small muted">β</span><input type="number" step="0.01" data-attr="${a.k}" value="${a.b.toFixed(3)}" aria-label="Coeficiente ${esc(a.l)}"></div></div>`));
+    box.innerHTML=cards.join("");
+    box.querySelectorAll("[data-fix]").forEach(el=>el.oninput=()=>{T[el.dataset.fix]=Number(el.value);update();drawMatrix()});
+    box.querySelectorAll("[data-attr]").forEach(el=>el.oninput=()=>{T.attrs.find(a=>a.k===el.dataset.attr).b=Number(el.value);update();drawMatrix();
+      const fx=el.closest(".corr").querySelector(".fx");fx.textContent=fmtN(Math.exp(Number(el.value)),3)});
+  }
+  drawMatrix();
+}
+function drawMatrix(){
+  const fams=[["Negociación (oferta)",t=>t.neg],["Fecha (12 meses)",t=>1+t.g],["Área (doble)",t=>Math.pow(2,-t.barea)],["Esquina",t=>at(t,"esq")],["Vía principal",t=>at(t,"via")],["Pasillo principal / ancla",t=>at(t,"pas")],["Plazoleta de comidas",t=>at(t,"plaz")],
+    ["Nivel superior",t=>at(t,"p2")],["Clase A",t=>at(t,"claseA")],["Parqueadero",t=>at(t,"parq")],["Piso alto",t=>at(t,"alto")],["Altura libre",t=>at(t,"alt")],["Tractomula",t=>at(t,"tracto")],["Muelle",t=>at(t,"muelle")],
+    ["Ascensor",t=>at(t,"asc")],["Vista exterior",t=>at(t,"ext")],["Temporada alta",t=>at(t,"alta")],["Servicios incluidos",t=>at(t,"serv")],["Flujo peatonal",t=>at(t,"flujo")],["Buen estado",t=>at(t,"est")]];
+  function at(t,k){const a=(t.attrs||[]).find(x=>x.k===k);return a?Math.exp(a.b):NaN}
+  const tk=Object.keys(TIPOS).filter(k=>TIPOS[k].metodo==="comp");
+  let h=`<thead><tr><th>Tipología</th>${fams.map(f=>`<th>${esc(f[0])}</th>`).join("")}</tr></thead><tbody>`;
+  h+=tk.map(k=>`<tr class="${k===K?"cur":""}"><td><b>${esc(TIPOS[k].nombre)}</b></td>${fams.map(f=>{const v=f[1](TIPOS[k]);return isFinite(v)?`<td class="n">${fmtN(v,3)}</td>`:`<td class="muted">—</td>`}).join("")}</tr>`).join("");
+  h+=`<tr><td class="muted">Lote o predio</td><td colspan="${fams.length}" class="muted" style="text-align:left">Capitalización inversa: sin correctores</td></tr><tr><td class="muted">Mobiliario auxiliar</td><td colspan="${fams.length}" class="muted" style="text-align:left">Costo de reposición: sin correctores</td></tr></tbody>`;
+  $("matrix").innerHTML=h;
+}
+function compCols(){const T=TIPOS[K];return ["ID","Tipo","Uso compatible",T.zonaL,"Distancia (m)","Antigüedad (meses)","Área (m²)",T.unidad==="día"?"Tarifa publicada ($/día)":"Canon publicado ($/mes)","Incluye IVA","Admin. incluida ($)"].concat(T.attrs.map(a=>a.l))}
+function drawComps(){
+  const T=TIPOS[K],s=S(),tb=$("t-comp").querySelector("tbody");
+  $("t-comp").querySelector("thead").innerHTML=`<tr><th>Resultado</th>${["ID","Tipo","Uso compatible",T.zonaL,"Distancia (m)","Antigüedad (meses)","Área (m²)",T.unidad==="día"?"Tarifa ($/día)":"Canon ($/mes)","IVA incl.","Admin. ($)"].concat(T.attrs.map(a=>a.l)).map(t=>`<th>${esc(t)}</th>`).join("")}<th>${T.unidad==="día"?"Tarifa por m²":"Canon por m²"}</th><th></th></tr>`;
+  if(!s.comps.length){tb.innerHTML=`<tr><td colspan="${13+T.attrs.length}" class="empty">No hay comparables. Agregue uno, péguelos desde Excel o cargue el ejemplo.</td></tr>`;return}
+  const opt=(arr,v)=>arr.map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("");
+  tb.innerHTML=s.comps.map((c,i)=>`<tr data-i="${i}"><td class="res"></td>
+    <td><input class="w-id" type="text" data-k="id" value="${esc(c.id)}" aria-label="ID"></td>
+    <td><select data-k="tipo" aria-label="Tipo de dato">${opt(["Oferta","Cierre"],c.tipo)}</select></td>
+    <td style="text-align:center"><input type="checkbox" data-k="uso"${c.uso?" checked":""} aria-label="Uso compatible"></td>
+    <td><select data-k="zona" aria-label="${esc(T.zonaL)}">${opt(T.zonas.map(z=>z[0]),c.zona)}</select></td>
+    <td><input class="w-s" type="number" data-k="dist" value="${c.dist}" aria-label="Distancia"></td>
+    <td><input class="w-s" type="number" data-k="meses" value="${c.meses}" aria-label="Meses"></td>
+    <td><input class="w-s" type="number" data-k="area" value="${c.area}" aria-label="Área"></td>
+    <td><input type="number" data-k="canon" step="10000" value="${c.canon}" aria-label="Canon"></td>
+    <td style="text-align:center"><input type="checkbox" data-k="iva"${c.iva?" checked":""} aria-label="Incluye IVA"></td>
+    <td><input class="w-s" type="number" data-k="admin" step="10000" value="${c.admin||0}" aria-label="Administración"></td>
+    ${T.attrs.map(a=>`<td style="text-align:center"><input type="checkbox" data-a="${a.k}"${c.at[a.k]?" checked":""} aria-label="${esc(a.l)}"></td>`).join("")}
+    <td class="n m2"></td><td><button type="button" class="ghost" data-del="${i}" aria-label="Eliminar">✕</button></td></tr>`).join("");
+  tb.querySelectorAll("tr[data-i]").forEach(tr=>{const c=s.comps[+tr.dataset.i];
+    tr.querySelectorAll("[data-k]").forEach(el=>el.addEventListener(el.type==="checkbox"||el.tagName==="SELECT"?"change":"input",()=>{const k=el.dataset.k;c[k]=el.type==="checkbox"?el.checked:el.type==="number"?Number(el.value):el.value;s.origen="usuario";update()}));
+    tr.querySelectorAll("[data-a]").forEach(el=>el.onchange=()=>{c.at[el.dataset.a]=el.checked;s.origen="usuario";update()});});
+  tb.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{s.comps.splice(+b.dataset.del,1);s.origen="usuario";drawComps();update()});
+}
+function parseBool(v){return /^(s[ií]|si|1|x|true|verdadero)$/i.test(String(v).trim())}
+function importRows(){
+  const T=TIPOS[K],s=S(),txt=$("paste-area").value.trim(),msg=$("paste-msg");if(!txt){msg.textContent="No hay filas para importar.";return}
+  const num=v=>Number(String(v).replace(/[$\s]/g,"").replace(/\.(?=\d{3}(\D|$))/g,"").replace(",","."));
+  let ok=0,bad=0;
+  txt.split(/\r?\n/).forEach(line=>{const c=line.split(/\t|;/);if(!c[0]||/^id$/i.test(c[0].trim()))return;
+    if(c.length<10){bad++;return}
+    const at={};T.attrs.forEach((a,i)=>at[a.k]=parseBool(c[10+i]||""));
+    const tipo=/cierre|contrato/i.test(c[1])?"Cierre":"Oferta";const zona=T.zonas.some(z=>z[0]===c[3].trim())?c[3].trim():T.zonas[0][0];
+    const r={id:c[0].trim(),tipo,uso:parseBool(c[2]),zona,dist:num(c[4]),meses:num(c[5]),area:num(c[6]),canon:num(c[7]),iva:parseBool(c[8]),admin:num(c[9])||0,at};
+    if([r.dist,r.meses,r.area,r.canon].some(x=>!isFinite(x))){bad++;return}
+    s.comps.push(r);ok++});
+  s.origen="usuario";msg.textContent=`${ok} fila(s) importada(s)`+(bad?`, ${bad} omitida(s) por formato.`:".");
+  if(ok){$("paste-area").value="";drawComps();update()}
+}
+function drawMethodPanels(){
+  const T=TIPOS[K],s=S();
+  document.querySelectorAll(".comp-only").forEach(el=>el.hidden=T.metodo!=="comp");
+  $("canon-comp").hidden=T.metodo!=="comp";$("canon-cap").hidden=T.metodo!=="cap";$("canon-rep").hidden=T.metodo!=="rep";
+  $("contrato-mes").hidden=T.unidad!=="mes";$("contrato-dia").hidden=T.unidad==="mes";
+  $("k-n-box").hidden=T.metodo!=="comp";
+  const base=T.metodo==="comp"?6:4;$("canon-idx").textContent="Paso "+base;$("contrato-idx").textContent="Paso "+(base+1);$("act-idx").textContent="Paso "+(base+2);$("mem-idx").textContent="Paso "+(base+3);
+  $("canon-h").textContent=T.metodo==="comp"?"Suficiencia y canon base":T.metodo==="cap"?"Canon base por capitalización inversa":"Canon base por costo de reposición";
+  $("canon-lead").textContent=T.metodo==="comp"?(T.unidad==="día"?"La tarifa base es la media de la tarifa diaria por m² homogeneizada multiplicada por el área del espacio.":"El canon base es la media del canon por m² homogeneizado multiplicada por el área del activo. Solo se adopta si hay comparables suficientes y su dispersión no supera el máximo."):"";
+  $("c-base-l").textContent=T.unidad==="día"?"Tarifa base diaria":"Canon base mensual";
+  $("act-lead").textContent=T.ley820?"Vivienda: el reajuste anual no puede superar el IPC del año anterior (Ley 820 de 2003); no se suman puntos adicionales.":T.unidad==="día"?"Las tarifas diarias se actualizan cada año con el índice combinado.":"Reajuste = mín(índice combinado + puntos de la tipología; tope). Índice combinado = w · IPC + (1 − w) · variación del mercado. La revisión a mercado se hace cada tres años.";
+  // inputs
+  const C=s.contrato,U=s.act;
+  const PCT=new Set(["r-k","u-w","u-p","u-tope","cap-r","rep-s","rep-i","rep-m"]);
+  [["r-plazo",C,"plazo"],["r-gracia",C,"gracia"],["r-k",C,"k"],["r-aporte",C,"aporte"],["r-ncom",C,"ncom"],["t-dias",C,"dias"],["u-w",U,"w"],["u-p",U,"p"],["u-tope",U,"tope"],
+   ["cap-v",s.cap,"v"],["cap-r",s.cap,"r"],["rep-vr",s.rep,"vr"],["rep-s",s.rep,"s"],["rep-n",s.rep,"n"],["rep-edad",s.rep,"edad"],["rep-i",s.rep,"i"],["rep-m",s.rep,"m"]]
+   .forEach(([id,o,k])=>{const el=$(id),f=PCT.has(id)?100:1;el.value=o[k]==null?"":+(o[k]*f).toFixed(4);el.oninput=()=>{o[k]=el.value===""?null:Number(el.value)/f;update()}});
+  const dc=$("d-causal"),dp=$("d-pct");dc.value=C.causal||"Sin descuento";dp.value=C.dpct??"";dp.disabled=dc.value==="Sin descuento";
+  dc.onchange=()=>{C.causal=dc.value;dp.disabled=dc.value==="Sin descuento";if(dp.disabled){C.dpct=null;dp.value=""}update()};
+  dp.oninput=()=>{C.dpct=dp.value===""?null:Math.min(100,Math.max(0,Number(dp.value)));update()};
+  $("u-p").disabled=$("u-tope").disabled=!!T.ley820;
+  const pe=$("d-pactado");pe.value=C.pactado??"";pe.oninput=()=>{C.pactado=pe.value===""?null:Number(pe.value);update()};
+  $("paste-cols").textContent=compCols().join(" ⇥ ");
+}
+function render(O){
+  const T=O.T,s=S(),A=s.activo;
+  if(T.metodo==="comp"){
+    if(s.comps.length)$("t-comp").querySelectorAll("tbody tr[data-i]").forEach((tr,i)=>{const r=O.rows[i];tr.classList.toggle("off",!r.usado);
+      tr.querySelector(".res").innerHTML=r.usado?pill("ok","Usado"):r.motivo==="Valor atípico"||r.motivo==="Excede límites de ajuste"?pill("warn",r.motivo):pill("neutral",r.motivo||"—");
+      tr.querySelector(".m2").textContent=fmt$(r.m2)});
+    const I=O.iqr;$("iqr-txt").textContent=I.n>=4?`Seleccionados por criterios: ${I.n}. Rango aceptado por la regla de atípicos: ${fmt$(I.lo)} a ${fmt$(I.hi)} por m².`:`Seleccionados por criterios: ${I.n}. La regla de atípicos requiere al menos 4.`;
+    $("data-status").textContent=s.origen==="ejemplo"?"Mostrando datos de ejemplo":`${s.comps.length} comparable(s) ingresado(s)`;
+    $("aviso-activo").hidden=A.area>0||!s.comps.length;
+    // homog
+    const fk=["neg","fecha","ubic","area"].concat(T.attrs.map(a=>a.k)),fl=["Negociación","Fecha","Ubicación","Área"].concat(T.attrs.map(a=>a.l));
+    $("t-hom").querySelector("thead").innerHTML=`<tr><th>ID</th><th>Valor por m²</th>${fl.map(l=>`<th>${esc(l)}</th>`).join("")}<th>Factor total</th><th>Ajuste neto</th><th>Ajuste bruto</th><th>Homogeneizado por m²</th><th>Resultado</th></tr>`;
+    const el=O.rows.filter(r=>r.eleg);
+    $("t-hom").querySelector("tbody").innerHTML=el.length?el.map(r=>`<tr class="${r.usado?"":"off"}"><td class="mono">${esc(r.c.id)}</td><td class="n">${fmt$(r.m2)}</td>${fk.map(k=>facCell(r.f[k])).join("")}
+      <td class="n"><b class="fac">${fmtN(r.tot,3)}</b></td><td class="n">${fmtP(r.neto)}</td><td class="n">${fmtP(r.bruto)}</td><td class="n">${r.usado?"<b>"+fmt$(r.h)+"</b>":"—"}</td><td>${r.usado?pill("ok","Usado"):pill("bad","Excede límites")}</td></tr>`).join(""):`<tr><td colspan="${fk.length+7}" class="empty">${!(A.area>0)&&s.comps.length?"Para homogeneizar, escriba el área del activo en el paso 2: los comparables se seleccionan y ajustan frente a ella.":"No hay comparables elegibles: revise el motivo de exclusión en la tabla de comparables."}</td></tr>`;
+    $("c-base").textContent=fmt$(O.base);
+    $("c-ic").textContent=isFinite(O.li)?`Rango de mercado (90 %): ${fmt$(O.li)} a ${fmt$(O.ls)} · área ${A.area} m²`:"Se requieren al menos 2 comparables para el intervalo.";
+    $("c-media").textContent=fmt$(O.media);$("c-med").textContent=fmt$(O.med);$("c-sd").textContent=fmt$(O.sd);$("c-cv").textContent=fmtP(O.cv);
+    $("c-checks").innerHTML=pill(O.okN?"ok":"bad",`${O.n} comparables (mín. ${REGLAS.nmin})`)+pill(O.okCV?"ok":"bad",`CV ${fmtP(O.cv)} (máx. ${fmtP(REGLAS.cvmax)})`)+(O.ok?pill("ok","Evidencia suficiente"):pill("warn","Aplicar jerarquía de respaldo"));
+    drawChart(O);
+  }else if(T.metodo==="cap"){$("cap-out").textContent=fmt$(O.base);$("cap-txt").textContent=`${fmt$(s.cap.v)} × ${fmtP(s.cap.r,2)} mensual · equivale a ${fmtP(s.cap.r*12,1)} anual`}
+  else{$("rep-out").textContent=fmt$(O.base);$("rep-dep").textContent=fmt$(O.dep);$("rep-vd").textContent=fmt$(O.vd);$("rep-cap").textContent=fmt$(O.capc);$("rep-man").textContent=fmt$(O.man)}
+  if(T.unidad==="mes"){
+    $("r-nom").textContent=fmt$(O.nom);$("r-exact").textContent=isFinite(O.nomEx)?`Exacto: ${fmt$(O.nomEx)} · ${fmtP(O.nomEx/O.base-1)} sobre el canon base`:"—";
+    $("d-pactado").placeholder=isFinite(O.pactado)?String(O.pactado):"";
+    $("d-final").textContent=fmt$(O.pactado);
+    $("d-li").textContent=isFinite(O.nom)?`Límite inferior del rango de mercado: ${fmt$(O.liAdj)}`+(O.dReal>0?` · descuento efectivo ${fmtP(O.dReal)}`:""):"—";
+    $("d-res").innerHTML=!isFinite(O.nom)?"":O.subs?(O.sinCausal?pill("bad","Por debajo del rango de mercado sin causal: requiere causal y aprobación"):pill("warn","Descuento de política: "+O.causal))+pill("warn",`Subsidio ${fmt$(O.subsMes)} al mes · ${fmt$(O.subsTot)} en ${O.mesesPago} meses`):
+      (O.pactado<O.nom?pill("ok","Negociado dentro del rango de mercado: no es descuento de política"):pill("ok","Sin descuento de política"));
+    $("r-warn").innerHTML=(O.warn||[]).map(w=>`<span class="pill ${w[0]}" style="white-space:normal">${esc(w[1])}</span>`).join("");
+  }else{$("t-total").textContent=fmt$(O.total);$("t-txt").textContent=`${fmt$(O.nom)} por día × ${s.contrato.dias} días`}
+  const tb=$("t-act").querySelector("tbody"),U=s.act;
+  tb.innerHTML=O.years.map(Y=>Y.y===1?`<tr><td class="mono">1</td><td></td><td></td><td></td><td></td><td class="n"><b>${fmt$(Y.v)}</b></td><td class="muted small">Valor pactado</td></tr>`:
+    `<tr><td class="mono">${Y.y}</td><td><input class="w-s" type="number" step="0.1" data-ipc="${Y.y-1}" value="${+(U.ipc[Y.y-1]*100).toFixed(3)}" aria-label="IPC"></td><td><input class="w-s" type="number" step="0.1" data-mkt="${Y.y-1}" value="${+(U.mkt[Y.y-1]*100).toFixed(3)}" aria-label="Mercado"></td>
+     <td class="n">${fmtP(Y.comb)}</td><td class="n">${fmtP(Y.aj)}</td><td class="n"><b>${fmt$(Y.v)}</b></td><td class="muted small">${Y.y===4&&!T.ley820?"Revisión a mercado":""}</td></tr>`).join("");
+  tb.querySelectorAll("[data-ipc]").forEach(e=>e.onchange=()=>{U.ipc[+e.dataset.ipc]=Number(e.value)/100;update()});
+  tb.querySelectorAll("[data-mkt]").forEach(e=>e.onchange=()=>{U.mkt[+e.dataset.mkt]=Number(e.value)/100;update()});
+  $("k-tipo").textContent=T.nombre;$("k-base-l").textContent=T.unidad==="día"?"Tarifa base diaria":"Canon base";
+  $("k-base").textContent=fmt$(O.base);$("k-nom").textContent=fmt$(O.pactado)+(T.unidad==="día"?" /día":"");$("k-n").textContent=O.n??"—";
+  const kr=$("k-res");kr.className="pill "+(O.ok?"ok":"warn");kr.textContent=O.ok?(T.metodo==="comp"?"Evidencia suficiente":"Cálculo completo"):(T.metodo==="comp"?(O.n?"Revisar: jerarquía de respaldo":"Faltan comparables"):"Faltan datos");
+  $("memo").textContent=memo(O);
+}
+function memo(O){
+  const T=O.T,s=S(),A=s.activo,L=[];
+  L.push("MEMORIA DE CÁLCULO (parámetros ilustrativos, tabla 2027-1)");
+  L.push("Activo: "+s.codigo+" · "+T.nombre+(T.metodo!=="rep"?" · "+A.area+" m²":"")+(T.metodo==="comp"?" · "+T.zonaL+" "+A.zona:""));
+  if(T.attrs.length)L.push("Atributos: "+T.attrs.map(a=>a.l+" "+(A.at[a.k]?"sí":"no")).join("; "));
+  L.push("Método: "+T.desc);L.push("");
+  if(T.metodo==="comp"){
+    L.push("Comparables: "+O.rows.length+" evaluados, "+O.iqr.n+" seleccionados, "+O.n+" usados");
+    O.rows.forEach(r=>L.push("  "+String(r.c.id).padEnd(5)+(r.usado?"usado      "+fmt$(r.m2)+"/m² → "+fmt$(r.h)+"/m² (factor "+fmtN(r.tot,3)+")":"excluido   "+r.motivo)));
+    L.push("Suficiencia: n = "+O.n+", CV = "+fmtP(O.cv)+" → "+(O.ok?"evidencia suficiente":"aplicar jerarquía de respaldo"));
+    L.push((T.unidad==="día"?"Tarifa base diaria: ":"Canon base: ")+fmt$(O.base)+(isFinite(O.li)?" (rango 90 %: "+fmt$(O.li)+" a "+fmt$(O.ls)+")":""));
+  }else if(T.metodo==="cap"){L.push("Valor comercial: "+fmt$(s.cap.v)+" · tasa mensual "+fmtP(s.cap.r,2));L.push("Canon base: "+fmt$(O.base))}
+  else{const p=s.rep;L.push("VR "+fmt$(p.vr)+" · residual "+fmtP(p.s,0)+" · vida útil "+p.n+" años · edad "+p.edad+" · i "+fmtP(p.i)+" · m "+fmtP(p.m));L.push("Canon base: "+fmt$(O.base))}
+  if(T.unidad==="mes"){const C=s.contrato;L.push("Canon nominal: "+fmt$(O.nom)+" (plazo "+C.plazo+" meses, gracia "+C.gracia+", aporte "+fmt$(C.aporte)+", costos "+C.ncom+" canon(es))");
+    L.push("Canon a pactar: "+fmt$(O.pactado)+" · "+(O.subs?(O.sinCausal?"por debajo del rango sin causal; ":"descuento de política ("+O.causal+"); ")+"subsidio de "+fmt$(O.subsMes)+" al mes y "+fmt$(O.subsTot)+" en el contrato":"sin descuento de política"))}
+  else L.push("Valor del contrato: "+fmt$(O.total)+" ("+s.contrato.dias+" días)");
+  L.push("Año 2: "+fmt$(O.years[1].v)+(T.ley820?" (tope IPC, Ley 820 de 2003)":""));L.push("");
+  L.push("Calculó: ____________   Revisó: ____________   Aprobó: ____________");
+  return L.join("\n");
+}
+function drawChart(O){
+  const svg=$("chart"),rows=O.rows.filter(r=>r.eleg),A=S().activo;
+  const W=520,rh=26,top=26,bot=34,left=46,right=16,H=top+bot+rh*Math.max(rows.length,1);
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);svg.setAttribute("width","100%");svg.style.minWidth="420px";
+  if(!rows.length){svg.innerHTML=`<text x="${W/2}" y="${H/2}" text-anchor="middle">Sin comparables elegibles</text>`;return}
+  const vals=rows.flatMap(r=>[r.m2,r.h]).concat(isFinite(O.li)?[O.li/A.area,O.ls/A.area]:[]);
+  let mn=Math.min(...vals),mx=Math.max(...vals);const pad=(mx-mn)*0.08||mx*0.05;mn-=pad;mx+=pad;
+  const raw=(mx-mn)/6,mag=Math.pow(10,Math.floor(Math.log10(raw))),step=[1,2,2.5,5,10].map(m=>m*mag).find(s=>s>=raw);
+  const x=v=>left+(v-mn)/(mx-mn)*(W-left-right);let s="";
+  for(let v=Math.ceil(mn/step)*step;v<=mx;v+=step)s+=`<line x1="${x(v)}" x2="${x(v)}" y1="${top-6}" y2="${H-bot+4}" stroke="var(--line)"/><text x="${x(v)}" y="${H-bot+18}" text-anchor="middle">${v>=1000?(v/1000).toLocaleString("es-CO",{maximumFractionDigits:1})+" mil":Math.round(v)}</text>`;
+  if(isFinite(O.li)){const a=x(O.li/A.area),b=x(O.ls/A.area);s+=`<rect x="${a}" y="${top-8}" width="${Math.max(b-a,1)}" height="${H-bot-top+12}" fill="var(--band)"/>`}
+  if(isFinite(O.media)){const m=x(O.media);s+=`<line x1="${m}" x2="${m}" y1="${top-10}" y2="${H-bot+4}" stroke="var(--homog)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="${m}" y="${top-13}" text-anchor="middle" class="lbl">media ${fmt$(O.media)}</text>`}
+  rows.forEach((r,i)=>{const y=top+rh*i+rh/2,x0=x(r.m2),x1=x(r.h),col=r.usado?"var(--homog)":"var(--bad)";
+    s+=`<text x="${left-8}" y="${y+4}" text-anchor="end" class="lbl">${esc(r.c.id)}</text>`;
+    if(Math.abs(x1-x0)>6){const d=x1>x0?-1:1;s+=`<line x1="${x0}" x2="${x1+d*5}" y1="${y}" y2="${y}" stroke="${col}" stroke-width="1.4"/><path d="M${x1+d*5},${y-4} L${x1},${y} L${x1+d*5},${y+4}" fill="none" stroke="${col}" stroke-width="1.4"/>`}
+    s+=`<circle cx="${x0}" cy="${y}" r="4.5" fill="var(--surface)" stroke="var(--raw)" stroke-width="1.6"/><circle cx="${x1}" cy="${y}" r="4.5" fill="${col}"/>`});
+  s+=`<text x="${W-right}" y="${H-4}" text-anchor="end">${O.T.unidad==="día"?"Tarifa por m² ($/m²/día)":"Canon por m² ($/m²/mes)"}</text>`;svg.innerHTML=s;
+}
+function update(){render(calc())}
+function drawAll(){drawTipos();drawActivo();drawCorr();drawMethodPanels();if(TIPOS[K].metodo==="comp")drawComps();update()}
+
+$("btn-add").onclick=()=>{const T=TIPOS[K],s=S(),at={};T.attrs.forEach(a=>at[a.k]=false);
+  s.comps.push({id:"N"+(s.comps.length+1),tipo:"Oferta",uso:true,zona:s.activo.zona,dist:0,meses:0,area:s.activo.area,canon:0,iva:false,admin:0,at});s.origen="usuario";drawComps();update();
+  const ins=$("t-comp").querySelectorAll('tbody tr:last-child input[data-k="canon"]');if(ins[0])ins[0].focus()};
+$("btn-example").onclick=()=>{ST[K]=nuevoEstado(K);drawAll()};
+$("btn-clear").onclick=()=>{S().comps=[];S().origen="usuario";drawComps();update()};
+$("btn-paste-toggle").onclick=e=>{const b=$("paste-box");b.hidden=!b.hidden;e.target.setAttribute("aria-expanded",String(!b.hidden));if(!b.hidden)$("paste-area").focus()};
+$("btn-import").onclick=importRows;
+$("btn-copy-head").onclick=()=>{const t=compCols().join("\t"),m=$("paste-msg");try{navigator.clipboard.writeText(t).then(()=>m.textContent="Encabezados copiados: péguelos en la primera fila de su hoja de Excel.",()=>m.textContent="No se pudo copiar; escriba los encabezados en el orden indicado.")}catch(e){m.textContent="No se pudo copiar; escriba los encabezados en el orden indicado."}};
+$("btn-copy").onclick=()=>{const t=$("memo").textContent,m=$("copy-msg");const sel=()=>{const r=document.createRange();r.selectNodeContents($("memo"));const g=getSelection();g.removeAllRanges();g.addRange(r);m.textContent="Texto seleccionado: cópielo con Ctrl+C"};
+  try{navigator.clipboard.writeText(t).then(()=>m.textContent="Memoria copiada",sel)}catch(e){sel()}};
+function limpiar(){
+  ST[K]=estadoBlanco(K);$("paste-area").value="";drawAll();
+}
+let armado=null;
+$("btn-limpiar").onclick=()=>{const b=$("btn-limpiar"),m=$("limpiar-msg");
+  if(!armado){b.textContent="Confirmar: borrar los datos de "+TIPOS[K].nombre.toLowerCase();b.classList.add("primary");
+    armado=setTimeout(()=>{armado=null;b.textContent="Limpiar campos";b.classList.remove("primary")},5000);return}
+  clearTimeout(armado);armado=null;b.textContent="Limpiar campos";b.classList.remove("primary");limpiar();m.textContent="Campos limpios. La tasa de oportunidad y los parámetros vigentes se conservan."};
+$("btn-ej-all").onclick=()=>{ST[K]=nuevoEstado(K);$("limpiar-msg").textContent="Ejemplo cargado.";drawAll()};
+/* ===== memoria en PDF ===== */
+// Las fuentes estándar del PDF no tienen griegas ni algunos símbolos: se reemplazan.
+const PDFTXT=t=>String(t??"").replace(/−/g,"-").replace(/→/g,"->").replace(/β₁/g,"b1").replace(/β/g,"b").replace(/γ/g,"g").replace(/₁/g,"1").replace(/≤/g,"<=").replace(/≥/g,">=").replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/⇥/g," | ").replace(/²/g,"2");
+function memoriaPDF(){
+  const O=calc(),T=O.T,s=S(),A=s.activo,C=s.contrato;
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"mm",format:"a4"});
+  const W=210,M=15,ink=[28,36,48],acc=[46,106,85],mut=[94,104,115],soft=[220,235,228],warn=[168,100,20];
+  const hoy=new Date(),fecha=hoy.toISOString().slice(0,10);
+  const p$=v=>isFinite(v)?fmt$(v):"-",pP=(v,d=1)=>isFinite(v)?fmtP(v,d):"-",pN=(v,d=3)=>isFinite(v)?fmtN(v,d):"-";
+  let y=0;
+  // encabezado
+  doc.setFillColor(...acc);doc.rect(0,0,W,26,"F");
+  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(15);
+  doc.text("Memoria de cálculo del canon de arrendamiento",M,12);
+  doc.setFont("helvetica","normal");doc.setFontSize(9);
+  doc.text("Empresa de Renovación y Desarrollo Urbano de Bogotá (RenoBo)",M,18);
+  doc.text(PDFTXT(T.nombre+" · "+T.desc),M,22.5);
+  doc.text("Fecha de cálculo: "+fecha,W-M,18,{align:"right"});doc.text("Tabla de parámetros: 2027-1",W-M,22.5,{align:"right"});
+  y=32;doc.setTextColor(...warn);doc.setFontSize(8);
+  doc.text("Parámetros ilustrativos (nivel de evidencia C). No corresponden a una calibración aprobada.",M,y);y+=6;
+  const sec=t=>{if(y>250){doc.addPage();y=18}doc.setTextColor(...acc);doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(PDFTXT(t),M,y);y+=2;doc.setDrawColor(...acc);doc.setLineWidth(0.3);doc.line(M,y,W-M,y);y+=3};
+  const base={theme:"grid",margin:{left:M,right:M},styles:{font:"helvetica",fontSize:8.5,cellPadding:1.6,textColor:ink,lineColor:[214,218,210],lineWidth:0.15},headStyles:{fillColor:acc,textColor:255,fontStyle:"bold"},alternateRowStyles:{fillColor:[246,247,244]}};
+  const tabla=(head,body,opt={})=>{doc.autoTable(Object.assign({},base,{startY:y,head:head?[head.map(PDFTXT)]:undefined,body:body.map(r=>r.map(c=>typeof c==="string"?PDFTXT(c):c))},opt,{styles:Object.assign({},base.styles,opt.styles||{})}));y=doc.lastAutoTable.finalY+7};
+  const note=t=>{doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...mut);const L=doc.splitTextToSize(PDFTXT(t),W-2*M);doc.text(L,M,y-3.5);y+=L.length*3.3};
+  const kv=(rows)=>tabla(null,rows,{columnStyles:{0:{cellWidth:72,fontStyle:"bold",textColor:mut}},theme:"plain",styles:{fontSize:9,cellPadding:1.2}});
+
+  // 1. identificación
+  sec("1. Identificación del activo");
+  const idr=[["Código del activo",s.codigo||"-"],["Tipología",T.nombre],["Método de cálculo",T.desc]];
+  if(T.metodo!=="rep")idr.push(["Área privada",(A.area??"-")+" m²"]);
+  if(T.metodo==="comp")idr.push([T.zonaL,A.zona||"-"]);
+  if(T.attrs.length)idr.push(["Atributos",T.attrs.map(a=>a.l+": "+(A.at[a.k]?"sí":"no")).join("; ")]);
+  kv(idr);
+
+  // 2. resultado
+  sec("2. Resultado");
+  const ul=T.unidad==="día"?" por día":" mensuales";
+  const res=[[T.unidad==="día"?"Tarifa base":"Canon base",p$(O.base)+ul]];
+  if(isFinite(O.li))res.push(["Rango de mercado (90 %)",p$(O.li)+" a "+p$(O.ls)]);
+  if(T.unidad==="mes"){res.push(["Canon nominal propuesto",p$(O.nom)+" mensuales"],["Canon que se propone pactar",p$(O.pactado)+" mensuales"],["Descuento de política",O.subs?(O.sinCausal?"Por debajo del rango sin causal (requiere aprobación)":O.causal+" ("+pP(O.dReal)+")"):"No"],["Subsidio",O.subs?p$(O.subsMes)+" al mes; "+p$(O.subsTot)+" en "+O.mesesPago+" meses":"-"])}
+  else res.push(["Valor del contrato",p$(O.total)+" ("+(C.dias??"-")+" días)"]);
+  if(T.metodo==="comp")res.push(["Suficiencia de la información",(O.ok?"Evidencia suficiente":"No cumple: aplicar jerarquía de respaldo")+" (n = "+O.n+", CV = "+pP(O.cv)+")"]);
+  tabla(null,res,{theme:"plain",columnStyles:{0:{cellWidth:72,fontStyle:"bold",textColor:mut},1:{fontStyle:"bold",textColor:acc}},styles:{fontSize:10,cellPadding:1.4}});
+
+  if(T.metodo==="comp"){
+    // 3. comparables
+    sec("3. Comparables evaluados");
+    tabla(["ID","Tipo","Zona","Dist. (m)","Meses","Área (m²)",T.unidad==="día"?"Tarifa":"Canon","IVA","Por m² base común","Resultado"],
+      O.rows.map(r=>{const c=r.c;return [c.id,c.tipo,c.zona,c.dist,c.meses,c.area,p$(c.canon),c.iva?"Sí":"No",p$(r.m2),r.usado?"Usado":r.motivo]}),
+      {styles:{fontSize:7.5},columnStyles:{3:{halign:"right"},4:{halign:"right"},5:{halign:"right"},6:{halign:"right"},8:{halign:"right"}},
+       didParseCell:d=>{if(d.section==="body"&&d.column.index===9)d.cell.styles.textColor=d.cell.raw==="Usado"?acc:mut}});
+    const I=O.iqr;note(`Criterios: uso compatible, distancia <= ${REGLAS.radio} m, antigüedad <= ${REGLAS.meses} meses, área entre ${REGLAS.amin*100} % y ${REGLAS.amax*100} % del activo. `+(I.n>=4?`Atípicos fuera de ${p$(I.lo)} a ${p$(I.hi)} por m².`:""));
+    // 4. homogeneización
+    sec("4. Homogeneización");
+    const fk=["neg","fecha","ubic","area"].concat(T.attrs.map(a=>a.k)),fl=["Neg.","Fecha","Ubic.","Área"].concat(T.attrs.map((a,i)=>"A"+(i+1)));
+    const el=O.rows.filter(r=>r.eleg);
+    if(el.length){
+      tabla(["ID","Por m²"].concat(fl).concat(["Total","Neto","Bruto","Homog. por m²"]),
+        el.map(r=>[r.c.id,p$(r.m2)].concat(fk.map(k=>pN(r.f[k]))).concat([pN(r.tot),pP(r.neto),pP(r.bruto),r.usado?p$(r.h):"Descartado"])),
+        {styles:{fontSize:7,halign:"right"},columnStyles:{0:{halign:"left"}}});
+      if(T.attrs.length)note(T.attrs.map((a,i)=>"A"+(i+1)+" = "+a.l).join("; "));
+    }else{kv([["Sin comparables elegibles",""]])}
+    // 5. correctores
+    sec("5. Correctores aplicados");
+    tabla(["Corrector","Coeficiente","Factor de referencia","Aplicación"],
+      [["Negociación (ofertas)","-",pN(T.neg),"x factor si el dato es una oferta"],["Fecha",pN(T.g,3),pN(1+T.g),"(1 + g)^(meses/12)"],["Área",pN(T.barea,3),pN(Math.pow(2,-T.barea)),"(A_comp / A_activo)^(-b1); referencia: doble de área"]]
+      .concat(T.zonas.map(z=>["Ubicación "+z[0],pN(z[1],3),pN(Math.exp(z[1])),"exp(g_activo - g_comp)"]))
+      .concat(T.attrs.map(a=>[a.l,pN(a.b,3),pN(Math.exp(a.b)),"exp(b x (X_activo - X_comp))"])),
+      {styles:{fontSize:7.5},columnStyles:{1:{halign:"right"},2:{halign:"right"}}});
+    // 6. estadísticos
+    sec("6. Suficiencia y canon base");
+    kv([["Comparables usados",String(O.n)+" (mínimo "+REGLAS.nmin+")"],["Media por m² homogeneizado",p$(O.media)],["Mediana por m²",p$(O.med)],["Desviación estándar",p$(O.sd)],["Coeficiente de variación",pP(O.cv)+" (máximo "+pP(REGLAS.cvmax)+")"],
+        [T.unidad==="día"?"Tarifa base (media x área)":"Canon base (media x área)",p$(O.base)]]);
+  }else if(T.metodo==="cap"){
+    sec("3. Capitalización inversa");
+    kv([["Valor comercial del activo",p$(s.cap.v)],["Tasa de rentabilidad mensual",pP(s.cap.r,2)],["Canon base = valor x tasa",p$(O.base)]]);
+  }else{
+    sec("3. Costo de reposición");const p=s.rep;
+    kv([["Valor de reposición (VR)",p$(p.vr)],["Valor residual",pP(p.s,0)+" de VR"],["Vida útil / edad",(p.n??"-")+" / "+(p.edad??"-")+" años"],["Depreciación anual",p$(O.dep)],["Valor depreciado (VD)",p$(O.vd)],["Costo de capital anual ("+pP(p.i)+")",p$(O.capc)],["Mantenimiento anual ("+pP(p.m)+" de VR)",p$(O.man)],["Canon base mensual",p$(O.base)]]);
+  }
+  // contrato
+  const nS=T.metodo==="comp"?7:4;
+  sec(nS+". Contrato");
+  if(T.unidad==="mes")kv([["Plazo",(C.plazo??"-")+" meses"],["Meses de gracia",String(C.gracia??"-")],["Tasa de oportunidad mensual",pP(C.k,2)],["Aporte de RenoBo",p$(C.aporte)],["Costos de transacción",(C.ncom??"-")+" canon(es) base"],
+    ["Factores de anualidad a(T) / a(g)",pN(O.aT)+" / "+pN(O.ag)],["Canon nominal (exacto)",p$(O.nomEx)],["Canon nominal propuesto",p$(O.nom)],["Límite inferior de mercado ajustado",p$(O.liAdj)],["Canon que se propone pactar",p$(O.pactado)]]);
+  else kv([["Tarifa diaria",p$(O.nom)],["Días de uso",String(C.dias??"-")],["Valor del contrato",p$(O.total)]]);
+  // actualización
+  sec((nS+1)+". Actualización");
+  tabla(["Año","IPC año anterior","Variación del mercado","Índice combinado","Reajuste","Valor"],
+    O.years.map(Y=>Y.y===1?["1","","","","",p$(Y.v)]:[String(Y.y),pP(s.act.ipc[Y.y-1]),pP(s.act.mkt[Y.y-1]),pP(Y.comb),pP(Y.aj),p$(Y.v)]),
+    {styles:{halign:"right"},columnStyles:{0:{halign:"center"}}});
+  note(T.ley820?"Vivienda: reajuste limitado al IPC del año anterior (Ley 820 de 2003).":`Índice combinado = ${pN(s.act.w,2)} x IPC + ${pN(1-s.act.w,2)} x mercado; reajuste = mín(índice + ${pP(s.act.p)}; ${pP(s.act.tope)}). Revisión a mercado cada tres años.`);
+  // firmas
+  if(y>240){doc.addPage();y=20}
+  sec((nS+2)+". Responsables");y+=12;
+  [["Calculó",M],["Revisó",M+62],["Aprobó",M+124]].forEach(([t,x])=>{doc.setDrawColor(...mut);doc.line(x,y,x+54,y);doc.setFontSize(8);doc.setTextColor(...mut);doc.text(t+" (nombre, cargo y fecha)",x,y+4)});
+  // pie
+  const np=doc.getNumberOfPages();
+  for(let i=1;i<=np;i++){doc.setPage(i);doc.setFontSize(7.5);doc.setTextColor(...mut);doc.text(PDFTXT("Memoria de cálculo · "+(s.codigo||"activo")+" · "+fecha),M,290);doc.text("Página "+i+" de "+np,W-M,290,{align:"right"})}
+  const name=("Memoria_"+(s.codigo||"activo")+"_"+fecha).replace(/[^\w\-]+/g,"_")+".pdf";
+  return {name,doc};
+}
+(async()=>{
+  const btn=$("btn-pdf"),msg=$("copy-msg");let dl=null;
+  try{dl=await (window.claude&&window.claude.use?window.claude.use("downloads"):null)}catch(e){dl=null}
+  if(!window.jspdf||!window.jspdf.jsPDF||!window.jspdf.jsPDF.API.autoTable){btn.hidden=true;msg.textContent="No se pudo cargar el generador de PDF; use “Copiar resumen”.";return}
+  if(!dl){btn.onclick=()=>{try{const {name,doc}=memoriaPDF();doc.save(name);msg.textContent="Memoria descargada: "+name}catch(e){msg.textContent="No se pudo generar el PDF."}};return}
+  btn.onclick=async()=>{btn.disabled=true;msg.textContent="Preparando el PDF…";
+    try{const {name,doc}=memoriaPDF();await dl.save({filename:name,data:doc.output("arraybuffer")});msg.textContent="Memoria descargada: "+name}
+    catch(e){const c=e&&e.code;msg.textContent=c==="declined"?"Descarga cancelada.":c==="rate_limited"?"Hay una descarga pendiente; inténtelo de nuevo en unos segundos.":"No se pudo generar el PDF ("+(c||(e&&e.message)||"error")+")."}
+    finally{btn.disabled=false}};
+})();
+drawAll();
+})();
+</script>
+
+</body>
+</html>
